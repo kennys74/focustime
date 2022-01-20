@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, AsyncStorage } from 'react-native';
-import { Focus } from './src/features/focus/focus';
-import { FocusHistory } from './src/features/focus/focusHistory';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { uuidv4 } from './src/utils/uuid';
 import { Timer } from './src/features/timer/Timer';
-import { colors } from './src/utils/colors';
-import { paddingSizes } from './src/utils/sizes';
+import { Focus } from './src/features/focus/Focus';
+import { FocusHistory } from './src/features/focus/FocusHistory';
 
 export default function App() {
-  const [focusSubject, setFocusSubject] = useState('Gardener');
+  const [focusSubject, setFocusSubject] = useState(null);
   const [focusHistory, setFocusHistory] = useState([]);
 
   const saveFocusHistory = async () => {
@@ -17,7 +19,6 @@ export default function App() {
       console.log(e);
     }
   };
-
   const loadFocusHistory = async () => {
     try {
       const history = await AsyncStorage.getItem('focusHistory');
@@ -35,38 +36,33 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (focusSubject) {
-      setFocusHistory([...focusHistory, focusSubject]);
-    }
-  }, [focusSubject]);
-
-  useEffect(() => {
     saveFocusHistory();
   }, [focusHistory]);
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       {focusSubject ? (
         <Timer
           subject={focusSubject}
-          onTimerEnd={() => {
-            setFocusHistory([
-              ...focusHistory,
-              { key: String(focusHistory.length + 1), subject: focusSubject, status: 1 },
-            ]);
-            setFocusSubject(null);
-          }}
           clearSubject={() => {
             setFocusHistory([
               ...focusHistory,
-              { key: String(focusHistory.length + 1), subject: focusSubject, status: 0 },
+              { subject: focusSubject, status: 0, key: uuidv4() },
+            ]);
+            setFocusSubject(null);
+          }}
+          onTimerEnd={() => {
+            setFocusHistory([
+              ...focusHistory,
+              { subject: focusSubject, status: 1, key: uuidv4() },
             ]);
             setFocusSubject(null);
           }}
         />
       ) : (
         <View style={styles.focusContainer}>
-          <Focus addSubject={setFocusSubject} />
+          <Focus focusHistory={focusHistory} addSubject={setFocusSubject} />
           <FocusHistory
             focusHistory={focusHistory}
             setFocusHistory={setFocusHistory}
@@ -80,8 +76,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.darkBlue,
-    paddingTop: Platform.OS === 'ios' ? paddingSizes.xxl : paddingSizes.sm,
   },
   focusContainer: { flex: 1, backgroundColor: '#252250' },
 });

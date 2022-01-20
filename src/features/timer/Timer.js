@@ -1,26 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Vibration } from 'react-native';
-import { ProgressBar } from 'react-native-paper';
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, Vibration } from "react-native";
+import { ProgressBar, Text } from "react-native-paper";
+import { Audio } from "expo-av";
 import { useKeepAwake } from "expo-keep-awake";
 
-import { colors } from '../../utils/colors';
-import { paddingSizes } from '../../utils/sizes';
-import { Countdown } from '../../components/Countdown';
-import { RoundedButton } from '../../components/RoundedButton';
-import { Timing } from './Timing';
+import { RoundedButton } from "../../components/RoundedButton";
+import { Countdown } from "../../components/Countdown";
+import { Timing } from "./Timing";
 
 export const Timer = ({ subject, clearSubject, onTimerEnd }) => {
   useKeepAwake();
+  
+  const soundObject = new Audio.Sound();
+
   const [minutes, setMinutes] = useState(0.1);
   const [isStarted, setStarted] = useState(false);
+  const [pauseCounter, setPauseCounter] = useState(0);
   const [progress, setProgress] = useState(1);
 
   const onProgress = (p) => {
     setProgress(p / 100);
   };
 
+  const onPause = () => {
+    setPauseCounter(pauseCounter + 1);
+  };
+
   const onEnd = async () => {
     try {
+      await soundObject.loadAsync(require("../../../assets/bell.mp3"));
+      await soundObject.playAsync();
       const interval = setInterval(() => Vibration.vibrate(5000), 1000);
       setTimeout(() => {
         clearInterval(interval);
@@ -41,19 +50,26 @@ export const Timer = ({ subject, clearSubject, onTimerEnd }) => {
     setMinutes(min);
   };
 
+  useEffect(() => {
+    return async () => {
+      await soundObject.unloadAsync();
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.countdown}>
         <Countdown
           minutes={minutes}
           isPaused={!isStarted}
-          onProgress={onProgress}
+          onPause={onPause}
           onEnd={onEnd}
+          onProgress={onProgress}
         />
-      </View>
-      <View style={{ paddingTop: paddingSizes.xxl }}>
-        <Text style={styles.title}>Focusing on:</Text>
-        <Text style={styles.task}>{subject}</Text>
+        <View style={{ padding: 50 }}>
+          <Text style={styles.title}>Focusing on:</Text>
+          <Text style={styles.task}>{subject}</Text>
+        </View>
       </View>
       <View>
         <ProgressBar
@@ -63,18 +79,18 @@ export const Timer = ({ subject, clearSubject, onTimerEnd }) => {
         />
       </View>
 
-      <View style={styles.buttonWrapper}>
+      <View style={styles.buttonWrapper()}>
         <Timing changeTime={changeTime} />
       </View>
 
-      <View style={styles.buttonWrapper}>
+      <View style={styles.buttonWrapper({ flex: 0.3 })}>
         {!isStarted ? (
           <RoundedButton title="start" onPress={() => setStarted(true)} />
         ) : (
           <RoundedButton title="pause" onPress={() => setStarted(false)} />
         )}
       </View>
-       <View style={styles.clearSubject}>
+      <View style={styles.clearSubject}>
         <RoundedButton title="-" size={50} onPress={() => clearSubject()} />
       </View>
     </View>
@@ -83,28 +99,29 @@ export const Timer = ({ subject, clearSubject, onTimerEnd }) => {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: "#252250",
     flex: 1,
   },
-  title: {
-    color: colors.white,
-    textAlign: 'center',
-  },
-  task: {
-    color: colors.white,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    paddingBottom: 15,
-  },
-  buttonWrapper: {
-    flex: 0.5,
-    padding: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
   countdown: {
-    flex: 0.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: { color: "white", textAlign: "center" },
+  task: { color: "white", fontWeight: "bold", textAlign: "center" },
+  buttonWrapper: ({
+    flex = 0.25,
+    padding = 15,
+    justifyContent = "center",
+  } = {}) => ({
+    flex,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent,
+    padding,
+  }),
+  clearSubject: {
+    paddingBottom: 25,
+    paddingLeft: 25,
   },
 });
